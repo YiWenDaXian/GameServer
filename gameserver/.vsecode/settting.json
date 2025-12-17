@@ -1,0 +1,14 @@
+{
+  "go.useLanguageServer": true,
+
+  "editor.formatOnSave": true,
+ 
+  "go.importsOnSave": true,
+ 
+  "go.formatTool": "goimports",
+
+  "gopls": {
+    "usePlaceholders": true,
+    "completeUnimported": true 
+  }
+}
