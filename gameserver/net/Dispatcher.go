@@ -6,12 +6,6 @@ import (
 	"time"
 )
 
-type Msg struct {
-	userID    string
-	requestId string
-	parma     map[string]interface{}
-}
-
 type userQueue struct {
 	ch    chan Msg
 	timer *time.Timer
@@ -23,26 +17,22 @@ type Dispatcher struct {
 	idle   time.Duration
 }
 
-func (d *Dispatcher) Dispatch(userID string, requestId string, parma map[string]interface{}) {
+func (d *Dispatcher) Dispatch(msg Request) {
 	d.mu.Lock()
-	q, ok := d.queues[userID]
+	q, ok := d.queues[msg.uid]
 	if !ok {
-		q = &userQueue{ch: make(chan Msg, 1024)}
-		d.queues[userID] = q
-		go d.worker(userID, q)
+		q = &userQueue{ch: make(chan Request, 1024)}
+		d.queues[msg.uid] = q
+		go d.worker(msg.uid, q)
 	}
 	d.mu.Unlock()
-	m := Msg{
-		userID:    userID,
-		requestId: requestId,
-		parma:     parma,
-	}
+
 	// 非阻塞入队，可根据策略阻塞/drop/扩容
 	select {
-	case q.ch <- m:
+	case q.ch <- msg:
 	default:
 		// 队列满时的策略（示例：丢弃/统计/阻塞）
-		q.ch <- m // 或者记录并丢弃，按需调整
+		q.ch <- msg // 或者记录并丢弃，按需调整
 	}
 }
 
@@ -75,12 +65,12 @@ func (d *Dispatcher) worker(userID string, q *userQueue) {
 	}
 }
 
-func processMessage(m Msg) {
+func processMessage(m Request) {
 	// 在 worker goroutine 中安全地操作连接的写入
 	// 处理业务...
-	conn := conns[m.userID]
+	conn := conns[m.uid]
 	writer := conn.Writer()
-	fmt.Printf(m.requestId)
-	_, _ = writer.WriteBinary([]byte("Processed requestId: " + m.requestId))
+	fmt.Printf("Processed uid %s requestId: %d\n", m.uid, m.requestId)
+	writer.WriteBinary([]byte("Processed requestId: " + fmt.Sprintf("%d", m.requestId)))
 	writer.Flush()
 }
