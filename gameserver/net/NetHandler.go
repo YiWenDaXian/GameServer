@@ -43,7 +43,7 @@ func (h *Handler) OnRead(conn netpoll.Connection) error {
 	if err1 != nil {
 		return err1
 	}
-	uid := rq.uid
+	uid := rq.UID
 	if conns[uid] == nil {
 		conns[uid] = conn
 	}
