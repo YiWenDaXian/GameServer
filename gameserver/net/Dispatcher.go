@@ -19,11 +19,11 @@ type Dispatcher struct {
 
 func (d *Dispatcher) Dispatch(msg Request) {
 	d.mu.Lock()
-	q, ok := d.queues[msg.uid]
+	q, ok := d.queues[msg.UID]
 	if !ok {
 		q = &userQueue{ch: make(chan Request, 1024)}
-		d.queues[msg.uid] = q
-		go d.worker(msg.uid, q)
+		d.queues[msg.UID] = q
+		go d.worker(msg.UID, q)
 	}
 	d.mu.Unlock()
 
@@ -68,9 +68,9 @@ func (d *Dispatcher) worker(userID string, q *userQueue) {
 func processMessage(m Request) {
 	// 在 worker goroutine 中安全地操作连接的写入
 	// 处理业务...
-	conn := conns[m.uid]
+	conn := conns[m.UID]
 	writer := conn.Writer()
-	fmt.Printf("Processed uid %s requestId: %d\n", m.uid, m.requestId)
-	writer.WriteBinary([]byte("Processed requestId: " + fmt.Sprintf("%d", m.requestId)))
+	fmt.Printf("Processed uid %s requestId: %d\n", m.UID, m.RequestId)
+	writer.WriteBinary([]byte("Processed requestId: " + fmt.Sprintf("%d", m.RequestId)))
 	writer.Flush()
 }
