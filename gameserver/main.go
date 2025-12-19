@@ -17,7 +17,7 @@ func main() {
 }
 
 func newFunction() bool {
-	listener, err := netpoll.CreateListener("tcp", "0.0.0.0:8080")
+	listener, err := netpoll.CreateListener("tcp", ":8080")
 	if err != nil {
 		fmt.Printf("Failed to create listener: %v\n", err)
 		return true
@@ -39,7 +39,7 @@ func newFunction() bool {
 	}
 
 	// 启动服务 - 使用正确的API和参数
-	fmt.Println("Starting TCP server on 0.0.0.0:8080")
+	fmt.Println("Starting TCP server on :8080 (listening on all interfaces)")
 	err = looper.Serve(listener)
 	if err != nil {
 		fmt.Printf("Failed to start server: %v\n", err)
