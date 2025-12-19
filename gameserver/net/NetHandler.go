@@ -15,9 +15,9 @@ type Handler struct {
 var conns map[string]netpoll.Connection
 
 type Request struct {
-	uid       string                 `json:"uid"`
-	requestId int                    `json:"requestId"`
-	parma     map[string]interface{} `json:"parma"`
+	UID       string                 `json:"uid"`
+	RequestId int                    `json:"requestId"`
+	Parma     map[string]interface{} `json:"parma"`
 }
 
 // OnRead 处理读取事件
@@ -25,16 +25,21 @@ func (h *Handler) OnRead(conn netpoll.Connection) error {
 	if conns == nil {
 		conns = make(map[string]netpoll.Connection)
 	}
-
-	// 读取数据
-	buffer, _ := conn.Reader().Peek(4096)
+	// 读取数据（只读取当前可用字节，避免等待固定大小导致阻塞）
+	reader := conn.Reader()
+	ln := reader.Len()
+	if ln == 0 {
+		// 没有可用数据，尽快返回，避免阻塞事件循环
+		return nil
+	}
+	buffer, _ := reader.Peek(ln)
 	data := make([]byte, len(buffer))
 	copy(data, buffer)
-	conn.Reader().Skip(len(buffer))
+	reader.Skip(len(buffer))
 
 	fmt.Printf("Received: %s\n", string(data))
 	var rq Request
-	err1 := json.Unmarshal([]byte(data), &rq)
+	err1 := json.Unmarshal(data, &rq)
 	if err1 != nil {
 		return err1
 	}
