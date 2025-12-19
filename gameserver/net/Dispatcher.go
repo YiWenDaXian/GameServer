@@ -7,7 +7,7 @@ import (
 )
 
 type userQueue struct {
-	ch    chan Msg
+	ch    chan Request
 	timer *time.Timer
 }
 
