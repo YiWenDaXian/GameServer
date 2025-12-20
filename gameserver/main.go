@@ -10,13 +10,13 @@ import (
 
 func main() {
 	// 创建监听器
-	shouldReturn := newFunction()
+	shouldReturn := initNet()
 	if shouldReturn {
 		return
 	}
 }
 
-func newFunction() bool {
+func initNet() bool {
 	listener, err := netpoll.CreateListener("tcp", ":8080")
 	if err != nil {
 		fmt.Printf("Failed to create listener: %v\n", err)
@@ -27,7 +27,7 @@ func newFunction() bool {
 	// 创建事件处理器
 	//handler := &net.Handler{}
 	handler := new(net.Handler)
-
+	handler.Init()
 	// 创建事件循环 - 使用正确的API和参数
 	looper, err := netpoll.NewEventLoop(func(ctx context.Context, conn netpoll.Connection) error {
 		// 当有新连接时调用OnRead

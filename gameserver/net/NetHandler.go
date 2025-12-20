@@ -20,6 +20,10 @@ type Request struct {
 	Parma     map[string]interface{} `json:"parma"`
 }
 
+func (h *Handler) Init() {
+	h.dispatcher.Init() // 5分钟空闲回收
+}
+
 // OnRead 处理读取事件
 func (h *Handler) OnRead(conn netpoll.Connection) error {
 	if conns == nil {
