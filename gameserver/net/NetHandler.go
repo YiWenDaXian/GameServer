@@ -13,18 +13,21 @@ import (
 type Handler struct {
 	dispatcher Dispatcher
 }
+type ConnHandle struct {
+	conn    netpoll.Connection
+	writeCh chan []byte
+}
 
-var conns map[string]netpoll.Connection
+var conns map[string]*ConnHandle
 
 func (h *Handler) Init() {
-	h.dispatcher.Init() // 5分钟空闲回收
+	h.dispatcher.Init()
+	conns = make(map[string]*ConnHandle)
 }
 
 // OnRead 处理读取事件
 func (h *Handler) OnRead(conn netpoll.Connection) error {
-	if conns == nil {
-		conns = make(map[string]netpoll.Connection)
-	}
+
 	// 读取数据（只读取当前可用字节，避免等待固定大小导致阻塞）
 	reader := conn.Reader()
 	ln := reader.Len()
@@ -35,7 +38,10 @@ func (h *Handler) OnRead(conn netpoll.Connection) error {
 	buffer, _ := reader.Peek(ln)
 	data := make([]byte, len(buffer))
 	copy(data, buffer)
-	reader.Skip(len(buffer))
+	skipErr := reader.Skip(len(buffer))
+	if skipErr != nil {
+		conn.Close()
+	}
 
 	fmt.Printf("Received: %s\n", string(data))
 	var rq common.Request
@@ -45,7 +51,12 @@ func (h *Handler) OnRead(conn netpoll.Connection) error {
 	}
 	uid := rq.GenTaskId()
 	if conns[uid] == nil {
-		conns[uid] = conn
+		writeQueue := make(chan []byte, 100)
+		conns[uid] = &ConnHandle{
+			conn:    conn,
+			writeCh: writeQueue,
+		}
+		go conns[uid].corePush()
 	}
 	// 分发请求到对应的用户队列
 	// 发送响应
@@ -58,4 +69,25 @@ func (h *Handler) OnRead(conn netpoll.Connection) error {
 func (h *Handler) OnHup(conn netpoll.Connection) error {
 	fmt.Println("Connection closed")
 	return nil
+}
+func Push(uid string, msg []byte) {
+	conn, exit := conns[uid]
+	if !exit {
+		fmt.Println("Connection !exit")
+		return
+	}
+	conn.writeCh <- msg
+
+}
+func (c *ConnHandle) corePush() {
+	for data := range c.writeCh {
+		_, writeErr := c.conn.Writer().WriteBinary(data)
+		if writeErr != nil {
+			fmt.Println("writeErr  ")
+		}
+		flushErr := c.conn.Writer().Flush()
+		if flushErr != nil {
+			fmt.Println("flushErr  ")
+		}
+	}
 }
