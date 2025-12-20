@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"gameserver/common"
 	"github.com/cloudwego/netpoll"
 )
 
@@ -13,12 +14,6 @@ type Handler struct {
 }
 
 var conns map[string]netpoll.Connection
-
-type Request struct {
-	UID       string                 `json:"uid"`
-	RequestId int                    `json:"requestId"`
-	Parma     map[string]interface{} `json:"parma"`
-}
 
 func (h *Handler) Init() {
 	h.dispatcher.Init() // 5分钟空闲回收
@@ -42,12 +37,12 @@ func (h *Handler) OnRead(conn netpoll.Connection) error {
 	reader.Skip(len(buffer))
 
 	fmt.Printf("Received: %s\n", string(data))
-	var rq Request
+	var rq common.Request
 	err1 := json.Unmarshal(data, &rq)
 	if err1 != nil {
 		return err1
 	}
-	uid := rq.UID
+	uid := rq.GenTaskId()
 	if conns[uid] == nil {
 		conns[uid] = conn
 	}

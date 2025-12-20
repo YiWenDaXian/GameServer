@@ -2,53 +2,30 @@ package net
 
 import (
 	"fmt"
-	"sync"
-	"time"
+	"gameserver/async"
+	"gameserver/common"
 )
 
-type userQueue struct {
-	ch    chan Request
-	timer *time.Timer
-}
-
 type Dispatcher struct {
-	mu     sync.Mutex
-	queues map[string]*userQueue
+	maps async.CoreTaskMap[common.Request]
 }
 
 func (d *Dispatcher) Init() {
-	d.queues = make(map[string]*userQueue)
+	d.maps.INIT()
+	d.maps.ProcessTask = processMessage
 }
 
-func (d *Dispatcher) Dispatch(msg Request) {
-	d.mu.Lock()
-
-	q, ok := d.queues[msg.UID]
-	if !ok {
-		q = &userQueue{ch: make(chan Request, 1024)}
-		d.queues[msg.UID] = q
-		go d.worker(msg.UID, q)
-	}
-	d.mu.Unlock()
+func (d *Dispatcher) Dispatch(msg common.Request) {
 
 	// 非阻塞入队，可根据策略阻塞/drop/扩容
-	select {
-	case q.ch <- msg:
-	default:
-		// 队列满时的策略（示例：丢弃/统计/阻塞）
-		q.ch <- msg // 或者记录并丢弃，按需调整
-	}
+	q := d.maps.GenChannel(msg.GenTaskId())
+	q.Select(msg)
 }
 
-func (d *Dispatcher) worker(userID string, q *userQueue) {
-	for msg := range q.ch {
-		processMessage(msg)
-	}
-}
-func processMessage(m Request) {
+func processMessage(m common.Request) {
 	// 在 worker goroutine 中安全地操作连接的写入
 	// 处理业务...
-	conn, ok := conns[m.UID]
+	conn, ok := conns[m.GenTaskId()]
 	if !ok || conn == nil {
 		fmt.Printf("No connection for uid %s, skip requestId: %d\n", m.UID, m.RequestId)
 		return
