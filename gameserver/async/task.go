@@ -37,9 +37,13 @@ func (ctm *CoreTaskMap[T]) GenChannel(taskId string) *TaskQueue[T] {
 	q, ok := ctm.CoreMap[taskId]
 	if !ok {
 		ctm.mu.Lock()
-		q = &TaskQueue[T]{ch: make(chan T, 1024)}
-		ctm.CoreMap[taskId] = q
-		go ctm.worker(q)
+		if ctm.CoreMap[taskId] == nil {
+			q = &TaskQueue[T]{ch: make(chan T, 1024)}
+			ctm.CoreMap[taskId] = q
+			go ctm.worker(q)
+		} else {
+			q = ctm.CoreMap[taskId]
+		}
 		ctm.mu.Unlock()
 	}
 	return q

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"gameserver/common"
+
 	"github.com/cloudwego/netpoll"
 )
 
@@ -50,14 +51,6 @@ func (h *Handler) OnRead(conn netpoll.Connection) error {
 	// 发送响应
 	// 发送响应 - 使用正确的方法名
 	h.dispatcher.Dispatch(rq)
-	writer := conn.Writer()
-	_, err := writer.WriteBinary(data)
-	if err != nil {
-		return err
-	}
-	// 刷新缓冲区
-	writer.Flush()
-
 	return nil
 }
 
