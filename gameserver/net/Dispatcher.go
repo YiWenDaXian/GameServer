@@ -48,8 +48,16 @@ func (d *Dispatcher) worker(userID string, q *userQueue) {
 func processMessage(m Request) {
 	// 在 worker goroutine 中安全地操作连接的写入
 	// 处理业务...
-	conn := conns[m.UID]
+	conn, ok := conns[m.UID]
+	if !ok || conn == nil {
+		fmt.Printf("No connection for uid %s, skip requestId: %d\n", m.UID, m.RequestId)
+		return
+	}
 	writer := conn.Writer()
+	if writer == nil {
+		fmt.Printf("No writer for uid %s, skip requestId: %d\n", m.UID, m.RequestId)
+		return
+	}
 	fmt.Printf("Processed uid %s requestId: %d\n", m.UID, m.RequestId)
 	writer.WriteBinary([]byte("Processed requestId: " + fmt.Sprintf("%d", m.RequestId)))
 	writer.Flush()
